@@ -1,6 +1,6 @@
 # QReview
 
-GitHub PR の差分を **Qwen3-Coder**（[ollama-control-plane](https://github.com/your-org/ollama-control-plane) 経由）で自動レビューし、PR にコメントとして投稿するツールです。
+GitHub PR の差分を **Qwen3-Coder**（[ollama-control-plane](https://github.com/hryktrd/ollama-control-plane) 経由）で自動レビューし、PR にコメントとして投稿するツールです。
 
 ---
 
