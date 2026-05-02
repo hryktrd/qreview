@@ -1,0 +1,35 @@
+name: QReview
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run QReview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          OLLAMA_CONTROL_PLANE_URL: ${{ secrets.OLLAMA_CONTROL_PLANE_URL }}
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          # Override model per-repo if needed (default: qwen3-coder:7b-q4)
+          REVIEW_MODEL: ${{ vars.REVIEW_MODEL || 'qwen3-coder:7b-q4' }}
+        run: python review.py
