@@ -1,5 +1,4 @@
 """Unit tests for review.py."""
-import types
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -53,14 +52,10 @@ class TestGetPrDiff:
         pr = _make_pr([_make_file("empty.py", None)])
         repo = _make_repo(pr)
         diff = review.get_pr_diff(repo, 1)
-        # header is still included but patch is empty
         assert "empty.py" in diff
 
     def test_multiple_files(self):
-        files = [
-            _make_file("a.py", "+a\n"),
-            _make_file("b.py", "+b\n"),
-        ]
+        files = [_make_file("a.py", "+a\n"), _make_file("b.py", "+b\n")]
         pr = _make_pr(files)
         repo = _make_repo(pr)
         diff = review.get_pr_diff(repo, 1)
@@ -73,46 +68,35 @@ class TestGetPrDiff:
 # ---------------------------------------------------------------------------
 
 class TestRunReview:
-    def _mock_response(self, content: str):
+    def _mock_openai_response(self, content: str):
         msg = MagicMock()
         msg.content = content
+        choice = MagicMock()
+        choice.message = msg
         resp = MagicMock()
-        resp.message = msg
+        resp.choices = [choice]
         return resp
 
-    @patch("review.Client")
-    def test_sends_correct_messages(self, MockClient):
-        instance = MockClient.return_value
-        instance.chat.return_value = self._mock_response("LGTM")
+    @patch("review.OpenAI")
+    def test_sends_correct_messages(self, MockOpenAI):
+        instance = MockOpenAI.return_value
+        instance.chat.completions.create.return_value = self._mock_openai_response("LGTM")
 
-        result = review.run_review("diff text", "http://localhost:11434", "key123", "qwen3-coder:7b-q4")
+        result = review.run_review("diff text", "https://ocp.example.com/v1", "key123", "qwen2.5-coder:14b")
 
-        MockClient.assert_called_once_with(
-            host="http://localhost:11434",
-            headers={"Authorization": "Bearer key123"},
-        )
-        call_args = instance.chat.call_args
-        messages = call_args.kwargs.get("messages") or call_args.args[1]
-        assert any("diff text" in m["content"] for m in messages)
+        MockOpenAI.assert_called_once_with(base_url="https://ocp.example.com/v1", api_key="key123")
+        call_kwargs = instance.chat.completions.create.call_args.kwargs
+        assert any("diff text" in m["content"] for m in call_kwargs["messages"])
         assert result == "LGTM"
 
-    @patch("review.Client")
-    def test_no_auth_header_when_key_empty(self, MockClient):
-        instance = MockClient.return_value
-        instance.chat.return_value = self._mock_response("ok")
+    @patch("review.OpenAI")
+    def test_empty_key_uses_none_placeholder(self, MockOpenAI):
+        instance = MockOpenAI.return_value
+        instance.chat.completions.create.return_value = self._mock_openai_response("ok")
 
-        review.run_review("d", "http://localhost:11434", "", "model")
+        review.run_review("d", "https://ocp.example.com/v1", "", "model")
 
-        MockClient.assert_called_once_with(host="http://localhost:11434", headers={})
-
-    @patch("review.Client")
-    def test_fallback_dict_response(self, MockClient):
-        # simulate older ollama library returning a plain dict
-        instance = MockClient.return_value
-        instance.chat.return_value = {"message": {"content": "dict-response"}}
-
-        result = review.run_review("d", "http://localhost:11434", "", "model")
-        assert result == "dict-response"
+        MockOpenAI.assert_called_once_with(base_url="https://ocp.example.com/v1", api_key="none")
 
 
 # ---------------------------------------------------------------------------
@@ -136,16 +120,16 @@ class TestMain:
         "GITHUB_TOKEN": "tok",
         "GITHUB_REPOSITORY": "org/repo",
         "PR_NUMBER": "3",
-        "OLLAMA_CONTROL_PLANE_URL": "http://cp.example.com",
+        "OLLAMA_CONTROL_PLANE_URL": "https://ocp.example.com/v1",
         "OLLAMA_API_KEY": "secret",
-        "REVIEW_MODEL": "qwen3-coder:7b-q4",
+        "REVIEW_MODEL": "qwen2.5-coder:14b",
     }
 
     @patch("review.post_comment")
     @patch("review.run_review", return_value="Looks good")
     @patch("review.get_pr_diff", return_value="diff content")
-    @patch("review.Github")
-    def test_happy_path(self, MockGithub, mock_diff, mock_review, mock_post, monkeypatch):
+    @patch("review.github")
+    def test_happy_path(self, mock_github, mock_diff, mock_review, mock_post, monkeypatch):
         for k, v in self._base_env.items():
             monkeypatch.setenv(k, v)
 
@@ -161,8 +145,8 @@ class TestMain:
     @patch("review.post_comment")
     @patch("review.run_review")
     @patch("review.get_pr_diff", return_value="   ")
-    @patch("review.Github")
-    def test_skips_empty_diff(self, MockGithub, mock_diff, mock_review, mock_post, monkeypatch):
+    @patch("review.github")
+    def test_skips_empty_diff(self, mock_github, mock_diff, mock_review, mock_post, monkeypatch):
         for k, v in self._base_env.items():
             monkeypatch.setenv(k, v)
 
