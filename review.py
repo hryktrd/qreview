@@ -3,8 +3,8 @@ import logging
 import os
 import sys
 
-from github import Github
-from ollama import Client
+import github
+from openai import OpenAI
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -43,19 +43,17 @@ def get_pr_diff(repo, pr_number: int) -> str:
     return "\n".join(parts)
 
 
-def run_review(diff: str, ollama_url: str, api_key: str, model: str) -> str:
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-    client = Client(host=ollama_url, headers=headers)
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Please review this diff:\n\n```diff\n{diff}\n```"},
-    ]
-    response = client.chat(model=model, messages=messages)
-    # ollama >= 0.4 returns an object; fall back to dict access for older versions
-    try:
-        return response.message.content
-    except AttributeError:
-        return response["message"]["content"]
+def run_review(diff: str, base_url: str, api_key: str, model: str) -> str:
+    # ollama-control-plane exposes an OpenAI-compatible API, not the native Ollama API
+    client = OpenAI(base_url=base_url, api_key=api_key or "none")
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Please review this diff:\n\n```diff\n{diff}\n```"},
+        ],
+    )
+    return response.choices[0].message.content
 
 
 def post_comment(repo, pr_number: int, body: str) -> None:
@@ -77,7 +75,8 @@ def main() -> None:
     api_key = os.environ.get("OLLAMA_API_KEY", "")
     model = os.environ.get("REVIEW_MODEL", "qwen3-coder:7b-q4")
 
-    gh = Github(github_token)
+    auth = github.Auth.Token(github_token)
+    gh = github.Github(auth=auth)
     repo = gh.get_repo(repo_name)
 
     logger.info("Fetching diff for PR #%d in %s", pr_number, repo_name)
