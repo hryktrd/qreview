@@ -21,7 +21,7 @@ You are an expert code reviewer. Review the provided git diff and give feedback 
 6. Test coverage gaps
 
 Be concise and actionable. Format your response in Markdown.
-Respond in the same language as the PR title/description when detectable; otherwise use English.\
+Always respond in Japanese.\
 """
 
 
