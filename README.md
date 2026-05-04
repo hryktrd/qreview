@@ -1,6 +1,6 @@
 # QReview
 
-GitHub PR の差分を **Qwen3-Coder**（[ollama-control-plane](https://github.com/your-org/ollama-control-plane) 経由）で自動レビューし、PR にコメントとして投稿するツールです。
+GitHub PR の差分を **Qwen2.5-Coder**（[ollama-control-plane](https://github.com/hryktrd/ollama-control-plane) 経由）で自動レビューし、結果を日本語で PR コメントとして投稿するツールです。
 
 ---
 
@@ -11,8 +11,8 @@ PR open/sync
     └─ GitHub Actions (qreview.yml)
             └─ review.py
                     ├─ PyGithub で PR diff 取得
-                    ├─ ollama-control-plane (Qwen3-Coder) へリクエスト
-                    └─ 結果を PR コメントとして投稿
+                    ├─ ollama-control-plane (OpenAI 互換 API) へリクエスト
+                    └─ レビュー結果（日本語）を PR コメントとして投稿
 ```
 
 ---
@@ -21,19 +21,17 @@ PR open/sync
 
 ### 1. ollama-control-plane の準備
 
-- ollama-control-plane を外部公開し、以下のモデルを事前に pull しておく。
+ollama-control-plane を外部公開し、以下のモデルを事前に pull しておく。
 
 ```bash
-ollama pull qwen3-coder:7b-q4
+ollama pull qwen2.5-coder:14b
 ```
 
-- エンドポイント例: `https://your-cp.example.com/v1`
+エンドポイント例: `https://your-cp.example.com/v1`
 
 ### 2. このリポジトリへ組み込む
 
 このリポジトリの `.github/workflows/qreview.yml` をレビュー対象のリポジトリにコピーし、`review.py` と `requirements.txt` も同梱します。
-
-または、[テンプレートとして使う](#テンプレートとして使う) を参照してください。
 
 ### 3. GitHub Secrets / Variables の設定
 
@@ -42,8 +40,8 @@ ollama pull qwen3-coder:7b-q4
 | 種類 | 名前 | 値の例 |
 |------|------|--------|
 | Secret | `OLLAMA_CONTROL_PLANE_URL` | `https://your-cp.example.com/v1` |
-| Secret | `OLLAMA_API_KEY` | APIキーまたはベアラートークン |
-| Variable (任意) | `REVIEW_MODEL` | `qwen3-coder:7b-q4`（デフォルト） |
+| Secret | `OLLAMA_API_KEY` | API キーまたはベアラートークン |
+| Variable (任意) | `REVIEW_MODEL` | `qwen2.5-coder:14b`（デフォルト） |
 
 `GITHUB_TOKEN` は Actions が自動で提供するため設定不要です。
 
@@ -55,13 +53,13 @@ ollama pull qwen3-coder:7b-q4
 
 セットアップ完了後は **PR を open または更新するだけ**で自動的にレビューが走ります。
 
-レビュー結果は PR のコメント欄に以下の形式で投稿されます。
+レビュー結果は PR のコメント欄に以下の形式で日本語投稿されます。
 
 ```
 ## 🤖 QReview
-> Reviewed by `qwen3-coder:7b-q4` via ollama-control-plane
+> Reviewed by `qwen2.5-coder:14b` via ollama-control-plane
 
-（レビュー内容）
+（日本語のレビュー内容）
 ```
 
 ### ローカルで手動実行
@@ -73,20 +71,20 @@ export GITHUB_TOKEN=ghp_xxxx
 export GITHUB_REPOSITORY=owner/repo
 export PR_NUMBER=42
 export OLLAMA_CONTROL_PLANE_URL=http://localhost:11434
-export OLLAMA_API_KEY=                   # ローカルなら空でOK
-export REVIEW_MODEL=qwen3-coder:7b-q4
+export OLLAMA_API_KEY=          # ローカルなら空でOK
+export REVIEW_MODEL=qwen2.5-coder:14b
 
 python review.py
 ```
 
-### テンプレートとして使う
+### 別のリポジトリに導入する
 
-1. このリポジトリをフォークまたはテンプレートとして新規リポジトリを作成。
-2. 対象リポジトリに以下のファイルをコピー。
+1. 以下の 3 ファイルを対象リポジトリにコピー。
    - `.github/workflows/qreview.yml`
    - `review.py`
    - `requirements.txt`
-3. Secrets を設定して PR を作成するだけで動作します。
+2. Secrets / Variables を設定。
+3. PR を作成するだけで動作します。
 
 ---
 
@@ -97,9 +95,9 @@ python review.py
 | `GITHUB_TOKEN` | ✅ | — | PR コメント投稿権限 |
 | `GITHUB_REPOSITORY` | ✅ | — | `owner/repo` 形式 |
 | `PR_NUMBER` | ✅ | — | レビュー対象 PR 番号 |
-| `OLLAMA_CONTROL_PLANE_URL` | ✅ | `http://localhost:11434` | ollama エンドポイント (`/v1` まで) |
+| `OLLAMA_CONTROL_PLANE_URL` | ✅ | `http://localhost:11434` | ollama エンドポイント（`/v1` まで） |
 | `OLLAMA_API_KEY` | — | `""` | Bearer トークン（ローカルは不要） |
-| `REVIEW_MODEL` | — | `qwen3-coder:7b-q4` | 使用モデル名 |
+| `REVIEW_MODEL` | — | `qwen2.5-coder:14b` | 使用モデル名 |
 
 ---
 
@@ -136,9 +134,10 @@ pytest tests/ -v
 ```python
 SYSTEM_PROMPT = """\
 You are an expert code reviewer. ...
+Always respond in Japanese.
 追加ルール:
 - 社内命名規則に従っているか確認する
-- XXXライブラリの使用を禁止する
+- XXX ライブラリの使用を禁止する
 """
 ```
 
