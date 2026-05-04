@@ -12,16 +12,16 @@ logger = logging.getLogger(__name__)
 MAX_DIFF_CHARS = 12_000
 
 SYSTEM_PROMPT = """\
-You are an expert code reviewer. Review the provided git diff and give feedback on:
-1. Bugs and logic errors
-2. Security issues (injection, secret exposure, broken auth, etc.)
-3. Code quality and readability
-4. Performance concerns
-5. Missing error handling or edge cases
-6. Test coverage gaps
+あなたは経験豊富なコードレビュアーです。提供された git diff をレビューし、以下の観点でフィードバックしてください。
+1. バグ・ロジックエラー
+2. セキュリティ上の問題（インジェクション、秘密情報の露出、認証不備など）
+3. コード品質・可読性
+4. パフォーマンス上の懸念
+5. エラーハンドリング・エッジケースの不足
+6. テストカバレッジのギャップ
 
-Be concise and actionable. Format your response in Markdown.
-Always respond in Japanese.\
+簡潔かつ具体的に記述し、Markdown 形式で回答してください。
+必ず日本語で回答してください。\
 """
 
 
